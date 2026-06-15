@@ -144,7 +144,8 @@ body { font-family: sans-serif; background: #f5f5f5; color: #333; }
     </div>
 </div><script>
 // ========== localStorage 后端 ==========
-const FAKE_DELAY = 50;
+alert("JS启动了！");
+    const FAKE_DELAY = 50;
 function delay() { return new Promise(r => setTimeout(r, FAKE_DELAY)); }
 async function getAllUsers() { await delay(); return JSON.parse(localStorage.getItem("db_users") || "{}"); }
 async function saveAllUsers(users) { await delay(); localStorage.setItem("db_users", JSON.stringify(users)); }
