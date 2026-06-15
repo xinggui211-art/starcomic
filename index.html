@@ -299,8 +299,8 @@ function timeAgo(ts) { const sec = Math.floor((Date.now() - ts) / 1000); if (sec
 function openLogin() { if (currentUser) { if (confirm(`确定要退出「${currentUser}」吗？`)) logout(); return; } document.getElementById("loginOverlay").style.display = "flex"; document.getElementById("loginUsername").value = ""; document.getElementById("loginPassword").value = ""; document.getElementById("loginMsg").textContent = ""; }
 function closeLogin() { document.getElementById("loginOverlay").style.display = "none"; }
 async function doRegister() { const u = document.getElementById("loginUsername").value.trim(); const p = document.getElementById("loginPassword").value.trim(); if (!u || !p) { document.getElementById("loginMsg").textContent = "⚠️ 不能为空"; return; } if (p.length < 4) { document.getElementById("loginMsg").textContent = "⚠️ 密码至少4位"; return; } document.getElementById("loginMsg").textContent = "正在注册..."; const r = await apiRegister(u, p); document.getElementById("loginMsg").textContent = r.msg; }
-async function doLogin() { const u = document.getElementById("loginUsername").value.trim(); const p = document.getElementById("loginPassword").value.trim(); document.getElementById("loginMsg").textContent = "正在登录..."; const r = await apiLogin(u, p); if (!r.ok) { document.getElementById("loginMsg").textContent = "⚠️ 用户名或密码错误"; return; } currentUser = u; favList = await apiGetFavorites(u); updateUserUI(); closeLogin(); if (currentView === "favorites") showFavorites(); else if (currentView === "history") showHistory(); else if (currentView === "ranking") showRanking(); else renderComics("全部"); }
-function logout() { currentUser = null; favList = []; updateUserUI(); renderComics("全部"); switchNav("home"); currentView = "home"; }
+async function doLogin() { const u = document.getElementById("loginUsername").value.trim(); const p = document.getElementById("loginPassword").value.trim(); document.getElementById("loginMsg").textContent = "正在登录..."; const r = await apiLogin(u, p); if (!r.ok) { document.getElementById("loginMsg").textContent = "⚠️ 用户名或密码错误"; return; } currentUser = u; localStorage.setItem("current_user", u); favList = await apiGetFavorites(u); updateUserUI(); closeLogin(); if (currentView === "favorites") showFavorites(); else if (currentView === "history") showHistory(); else if (currentView === "ranking") showRanking(); else renderComics("全部"); }
+function logout() { currentUser = null; localStorage.removeItem("current_user"); favList = [];updateUserUI(); renderComics("全部"); switchNav("home"); currentView = "home"; }
 function updateUserUI() { const btn = document.getElementById("btnUser"); if (currentUser) { btn.textContent = `👤 ${currentUser}`; btn.className = "btn-user logged-in"; } else { btn.textContent = "👤 登录"; btn.className = "btn-user"; } }
 
 // ========== 渲染 ==========
@@ -345,8 +345,17 @@ function goHome() { document.getElementById("readerPage").style.display = "none"
 
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').then(() => console.log('✅ PWA 就绪')).catch(e => console.log('SW:', e.message)); }
 
-updateUserUI();
-renderComics("全部");
+(async function init() {
+    const savedUser = localStorage.getItem("current_user");
+    if (savedUser) {
+        currentUser = savedUser;
+        favList = await apiGetFavorites(savedUser);
+        updateUserUI();
+    } else {
+        updateUserUI();
+    }
+    renderComics("全部");
+})();
 </script>
 
 </body>
