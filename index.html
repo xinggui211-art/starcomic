@@ -293,7 +293,7 @@ async function apiAddHistory(username, comicId) { let all = await getHistoryData
 async function apiGetComments(comicId) { const all = await getCommentData(); return all.filter(c => c.comic_id === comicId).sort((a, b) => a.time - b.time); }
 async function apiAddComment(comicId, username, text, parentId, parentUsername) { const id = await getNextCommentId(); const all = await getCommentData(); all.push({ id, comic_id: comicId, username, text, time: Date.now(), parent_id: parentId || null, parent_username: parentUsername || null }); await saveCommentData(all); }
 async function apiGetRanking() { const allFavs = await getFavData(); const countMap = {}; allFavs.forEach(f => { countMap[f.comic_id] = (countMap[f.comic_id] || 0) + 1; }); return comics.map(c => ({ ...c, favCount: countMap[c.id] || 0 })).filter(c => c.favCount > 0).sort((a, b) => b.favCount - a.favCount).slice(0, 20); }
-function timeAgo(ts) { /60) return "刚刚"; if (sec < 3600) return Math.floor(sec / 60) + "分钟前"; if (sec < 86400) return Math.floor(sec / 3600) + "小时前"; return Math.floor(sec / 86400) + "天前"; }
+function timeAgo(ts) { const sec = Math.floor((Date.now() - ts) / 1000); if (sec < 60) return "刚刚"; if (sec < 3600) return Math.floor(sec / 60) + "分钟前"; if (sec < 86400) return Math.floor(sec / 3600) + "小时前"; return Math.floor(sec / 86400) + "天前"; }
 
 // ========== UI ==========
 function openLogin() { if (currentUser) { if (confirm(`确定要退出「${currentUser}」吗？`)) logout(); return; } document.getElementById("loginOverlay").style.display = "flex"; document.getElementById("loginUsername").value = ""; document.getElementById("loginPassword").value = ""; document.getElementById("loginMsg").textContent = ""; }
