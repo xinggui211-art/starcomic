@@ -1,4 +1,4 @@
-const CACHE = 'starcomic-v3';
+const CACHE = 'starcomic-v5';
 
 self.addEventListener('install', e => {
     e.waitUntil(
