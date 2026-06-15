@@ -76,9 +76,34 @@ body { font-family: sans-serif; background: #f5f5f5; color: #333; }
 .comment-reply-btn:hover { color: #ff6b35; }
 .reply-indicator { background: #2a2a2a; color: #ff6b35; font-size: 11px; padding: 4px 10px; border-radius: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
 .reply-indicator button { background: none; border: none; color: #999; cursor: pointer; font-size: 14px; }
+.import-overlay-inner { background: #fff; border-radius: 12px; padding: 24px 20px; width: 90%; max-width: 400px; max-height: 85vh; overflow-y: auto; }
+.import-overlay-inner textarea { width: 100%; height: 140px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 12px; resize: vertical; outline: none; margin-bottom: 10px; }
+.import-url-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.import-url-row input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 12px; outline: none; }
+.btn-sm { padding: 8px 14px; border: none; border-radius: 8px; font-size: 12px; cursor: pointer; }
+.btn-import { width: 100%; padding: 12px; background: #ff6b35; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; margin-bottom: 8px; }
+.btn-reset { width: 100%; padding: 10px; background: #fff; color: #e53935; border: 1px solid #e53935; border-radius: 8px; font-size: 13px; cursor: pointer; }
     </style>
 </head>
-<body><!-- ========== 登录弹窗 ========== -->
+<body><!-- 导入弹窗 -->
+<div id="importOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999;align-items:center;justify-content:center;">
+    <div class="import-overlay-inner">
+        <div style="font-size:18px;font-weight:bold;margin-bottom:14px;">📥 导入数据源</div>
+        <div style="font-size:12px;color:#888;margin-bottom:8px;">方式一：粘贴 JSON 数据</div>
+        <textarea id="importJSON" placeholder='[&#10;  {"id":1,"title":"漫画名","chapter":"第1话","tag":"分类"},&#10;  {"id":2,"title":"第二部","chapter":"第20话","tag":"都市"}&#10;]'></textarea>
+        <div style="font-size:12px;color:#888;margin-bottom:8px;">方式二：输入 JSON 数据源网址</div>
+        <div class="import-url-row">
+            <input type="text" id="importURL" placeholder="https://example.com/comics.json">
+            <button class="btn-sm" style="background:#666;color:#fff;" onclick="fetchAndImport()">获取</button>
+        </div>
+        <button class="btn-import" onclick="doImport()">📥 导入 JSON 数据</button>
+        <button class="btn-reset" onclick="resetComics()">🔄 恢复默认漫画库</button>
+        <div style="font-size:11px;color:#999;margin-top:10px;text-align:center;" id="importMsg"></div>
+        <button onclick="closeImport()" style="margin-top:10px;background:none;border:none;color:#999;font-size:13px;cursor:pointer;width:100%;">取消</button>
+    </div>
+</div>
+
+<!-- 登录弹窗 -->
 <div id="loginOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:12px;padding:30px 24px;width:90%;max-width:360px;text-align:center;">
         <div style="font-size:40px;margin-bottom:8px;">👤</div>
@@ -92,7 +117,7 @@ body { font-family: sans-serif; background: #f5f5f5; color: #333; }
     </div>
 </div>
 
-<!-- ========== 首页 ========== -->
+<!-- 首页 -->
 <div id="homePage">
     <nav class="navbar">
         <div class="logo">🌟 星漫</div>
@@ -106,6 +131,7 @@ body { font-family: sans-serif; background: #f5f5f5; color: #333; }
             <input type="text" placeholder="搜索漫画..." id="searchInput">
             <button onclick="searchComic()">🔍</button>
         </div>
+        <button class="btn-user" style="font-size:14px;" onclick="openImport()" title="导入数据源">📥</button>
         <button class="btn-user" id="btnUser" onclick="openLogin()">👤 登录</button>
     </nav>
     <div class="container" id="homeContent">
@@ -117,10 +143,10 @@ body { font-family: sans-serif; background: #f5f5f5; color: #333; }
         <div class="comic-grid" id="comicGrid"></div>
         <div id="emptyMsg" style="display:none;text-align:center;color:#999;padding:60px;">😢 暂无内容</div>
     </div>
-    <div class="footer">© 2026 星漫 🚀</div>
+    <div class="footer">© 2026 星漫 🚀 | <a href="#" onclick="openImport()" style="color:#ff6b35;">📥 导入数据源</a></div>
 </div>
 
-<!-- ========== 阅读器 ========== -->
+<!-- 阅读器 -->
 <div id="readerPage" style="display:none;">
     <div class="reader-topbar">
         <button class="btn-back" onclick="goHome()">← 返回</button>
@@ -139,7 +165,7 @@ body { font-family: sans-serif; background: #f5f5f5; color: #333; }
     </div>
     <div class="comment-section" id="commentSection">
         <div class="comment-header"><span>💬 评论 (<span id="commentCount">0</span>)</span><button class="btn-refresh-comment" onclick="loadComments()">🔄</button></div>
-        <div class="comment-list" id="commentList"><div style="text-align:center;color:#999;padding:20px;">暂无评论，来说两句吧~</div></div>
+        <div class="comment-list" id="commentList"><div style="text-align:center;color:#999;padding:20px;">暂无评论</div></div>
         <div class="comment-input-row"><input type="text" id="commentInput" placeholder="写下你的评论..." maxlength="200"><button onclick="sendComment()">发送</button></div>
     </div>
 </div><script>
@@ -156,13 +182,8 @@ async function getCommentData() { await delay(); return JSON.parse(localStorage.
 async function saveCommentData(data) { await delay(); localStorage.setItem("db_comments", JSON.stringify(data)); }
 async function getNextCommentId() { const all = await getCommentData(); if (all.length === 0) return 1; return Math.max(...all.map(c => c.id || 0)) + 1; }
 
-// ========== 漫画封面 ==========
-function coverUrl(comicId) { return `https://picsum.photos/seed/comic${comicId}/300/400`; }
-function pageImgUrl(comicId, pageNum) { return `https://picsum.photos/seed/comic${comicId}_p${pageNum}/600/800`; }
-function getTotalPages() { return 5; }
-
-// ========== 漫画数据（20部） ==========
-const comics = [
+// ========== 默认漫画 ==========
+const DEFAULT_COMICS = [
     { id: 1, title: "仙王的日常生活", chapter: "第320话", tag: "玄幻" },
     { id: 2, title: "都市极品神医", chapter: "第188话", tag: "都市" },
     { id: 3, title: "星河漫步", chapter: "第56话", tag: "科幻" },
@@ -185,23 +206,85 @@ const comics = [
     { id: 20, title: "凤囚凰", chapter: "第89话", tag: "古风" },
 ];
 
+// ========== 动态漫画数据 ==========
+let comics = loadComics();
+
+function loadComics() {
+    const saved = localStorage.getItem("imported_comics");
+    if (saved) {
+        try {
+            const arr = JSON.parse(saved);
+            if (Array.isArray(arr) && arr.length > 0) return arr.map((c, i) => ({ id: c.id || i + 1, title: c.title || "未知", chapter: c.chapter || "连载中", tag: c.tag || "其他" }));
+        } catch (e) {}
+    }
+    return [...DEFAULT_COMICS];
+}
+
+function saveComics(arr) { localStorage.setItem("imported_comics", JSON.stringify(arr)); }
+
+function resetComics() { localStorage.removeItem("imported_comics"); comics = loadComics(); closeImport(); renderTagList(); renderComics("全部"); document.getElementById("importMsg").textContent = "✅ 已恢复默认漫画库"; setTimeout(() => { document.getElementById("importMsg").textContent = ""; }, 2000); }
+
+// ========== 动态标签 ==========
+function getAllTags() { const set = new Set(); comics.forEach(c => { if (c.tag) set.add(c.tag); }); return Array.from(set); }
+function renderTagList() {
+    const tags = getAllTags();
+    const container = document.getElementById("tagArea");
+    container.innerHTML = '<span class="tag active" onclick="filterTag(this)">全部</span>' + tags.map(t => `<span class="tag" onclick="filterTag(this)">${t}</span>`).join("");
+}
+
+// ========== 导入功能 ==========
+function openImport() { document.getElementById("importOverlay").style.display = "flex"; document.getElementById("importJSON").value = ""; document.getElementById("importURL").value = ""; document.getElementById("importMsg").textContent = ""; }
+function closeImport() { document.getElementById("importOverlay").style.display = "none"; }
+
+function doImport() {
+    const raw = document.getElementById("importJSON").value.trim();
+    if (!raw) { document.getElementById("importMsg").textContent = "⚠️ 请粘贴 JSON 数据"; return; }
+    try {
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr) || arr.length === 0) { document.getElementById("importMsg").textContent = "⚠️ JSON 必须是非空数组"; return; }
+        saveComics(arr);
+        comics = loadComics();
+        closeImport();
+        renderTagList();
+        renderComics("全部");
+        alert(`✅ 成功导入 ${comics.length} 部漫画！`);
+    } catch (e) {
+        document.getElementById("importMsg").textContent = "⚠️ JSON 格式错误：" + e.message;
+    }
+}
+
+async function fetchAndImport() {
+    const url = document.getElementById("importURL").value.trim();
+    if (!url) { document.getElementById("importMsg").textContent = "⚠️ 请输入网址"; return; }
+    document.getElementById("importMsg").textContent = "⏳ 正在获取...";
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const arr = await res.json();
+        if (!Array.isArray(arr) || arr.length === 0) { document.getElementById("importMsg").textContent = "⚠️ 返回数据不是有效数组"; return; }
+        saveComics(arr);
+        comics = loadComics();
+        closeImport();
+        renderTagList();
+        renderComics("全部");
+        alert(`✅ 成功从云端导入 ${comics.length} 部漫画！`);
+    } catch (e) {
+        document.getElementById("importMsg").textContent = "⚠️ 获取失败：" + e.message;
+    }
+}
+
+// ========== 漫画封面 ==========
+function coverUrl(comicId) { return `https://picsum.photos/seed/comic${comicId}/300/400`; }
+function pageImgUrl(comicId, pageNum) { return `https://picsum.photos/seed/comic${comicId}_p${pageNum}/600/800`; }
+function getTotalPages() { return 5; }
+
 // ========== 状态 ==========
 let currentUser = null, favList = [], currentView = "home", currentComic = null, currentPage = 0;
 let readerScale = 1, readerTranslateX = 0, readerTranslateY = 0, replyTo = null;
 
 // ========== 业务 API ==========
-async function apiRegister(username, password) {
-    const users = await getAllUsers();
-    if (users[username]) return { ok: false, msg: "该用户名已被注册" };
-    users[username] = { password, createdAt: Date.now() };
-    await saveAllUsers(users);
-    return { ok: true, msg: "✅ 注册成功！请登录" };
-}
-async function apiLogin(username, password) {
-    const users = await getAllUsers();
-    if (!users[username] || users[username].password !== password) return { ok: false };
-    return { ok: true };
-}
+async function apiRegister(username, password) { const users = await getAllUsers(); if (users[username]) return { ok: false, msg: "该用户名已被注册" }; users[username] = { password, createdAt: Date.now() }; await saveAllUsers(users); return { ok: true, msg: "✅ 注册成功！请登录" }; }
+async function apiLogin(username, password) { const users = await getAllUsers(); if (!users[username] || users[username].password !== password) return { ok: false }; return { ok: true }; }
 async function apiGetFavorites(username) { const all = await getFavData(); return all.filter(f => f.username === username).map(f => f.comic_id); }
 async function apiAddFavorite(username, comicId) { const all = await getFavData(); all.push({ username, comic_id: comicId }); await saveFavData(all); }
 async function apiRemoveFavorite(username, comicId) { let all = await getFavData(); all = all.filter(f => !(f.username === username && f.comic_id === comicId)); await saveFavData(all); }
@@ -210,8 +293,7 @@ async function apiAddHistory(username, comicId) { let all = await getHistoryData
 async function apiGetComments(comicId) { const all = await getCommentData(); return all.filter(c => c.comic_id === comicId).sort((a, b) => a.time - b.time); }
 async function apiAddComment(comicId, username, text, parentId, parentUsername) { const id = await getNextCommentId(); const all = await getCommentData(); all.push({ id, comic_id: comicId, username, text, time: Date.now(), parent_id: parentId || null, parent_username: parentUsername || null }); await saveCommentData(all); }
 async function apiGetRanking() { const allFavs = await getFavData(); const countMap = {}; allFavs.forEach(f => { countMap[f.comic_id] = (countMap[f.comic_id] || 0) + 1; }); return comics.map(c => ({ ...c, favCount: countMap[c.id] || 0 })).filter(c => c.favCount > 0).sort((a, b) => b.favCount - a.favCount).slice(0, 20); }
-
-function timeAgo(ts) { const sec = Math.floor((Date.now() - ts) / 1000); if (sec < 60) return "刚刚"; if (sec < 3600) return Math.floor(sec / 60) + "分钟前"; if (sec < 86400) return Math.floor(sec / 3600) + "小时前"; return Math.floor(sec / 86400) + "天前"; }
+function timeAgo(ts) { /60) return "刚刚"; if (sec < 3600) return Math.floor(sec / 60) + "分钟前"; if (sec < 86400) return Math.floor(sec / 3600) + "小时前"; return Math.floor(sec / 86400) + "天前"; }
 
 // ========== UI ==========
 function openLogin() { if (currentUser) { if (confirm(`确定要退出「${currentUser}」吗？`)) logout(); return; } document.getElementById("loginOverlay").style.display = "flex"; document.getElementById("loginUsername").value = ""; document.getElementById("loginPassword").value = ""; document.getElementById("loginMsg").textContent = ""; }
@@ -261,10 +343,8 @@ async function sendComment() { if (!currentUser) { alert("请先登录"); return
 
 function goHome() { document.getElementById("readerPage").style.display = "none"; document.getElementById("homePage").style.display = "block"; if (currentView === "favorites") showFavorites(); else if (currentView === "history") showHistory(); else if (currentView === "ranking") showRanking(); else renderComics("全部"); currentComic = null; }
 
-// ========== Service Worker ==========
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').then(() => console.log('✅ PWA 就绪')).catch(e => console.log('SW:', e.message)); }
 
-// ========== 启动 ==========
 updateUserUI();
 renderComics("全部");
 </script>
